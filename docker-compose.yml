@@ -1,0 +1,73 @@
+version: '3.8'
+
+services:
+  # ------------------------------------
+  # 1. SERVICIO DEL BACKEND (SYMFONY) - CORREGIDO
+  # ------------------------------------
+  php:
+    build:
+      context: ./backend
+    container_name: symfony_app
+    restart: unless-stopped
+    volumes:
+      - ./backend:/var/www/symfony
+    depends_on:
+      - database
+    
+    # 💥 LA CORRECCIÓN CLAVE:
+    # 1. Forzamos el comando a ser SOLO php-fpm.
+    # 2. Añadimos el --allow-run-as-root para Alpine, lo cual puede ser necesario si FPM falla.
+    command: ["php-fpm", "--allow-to-run-as-root"] 
+
+  # ------------------------------------
+  # 2. SERVIDOR WEB (NGINX)
+  # ------------------------------------
+  nginx:
+    image: nginx:stable-alpine
+    container_name: symfony_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./backend:/var/www/symfony
+      - ./docker/nginx/conf.d/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - php
+
+  # ------------------------------------
+  # 3. BASE DE DATOS (POSTGRES/MYSQL)
+  # ------------------------------------
+  database:
+    image: postgres:15-alpine
+    container_name: symfony_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: symfony_db
+      POSTGRES_USER: symfony_user
+      POSTGRES_PASSWORD: symfony_pass
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+
+  # ------------------------------------
+  # 4. SERVICIO DEL FRONTEND (ANGULAR) - CORRECCIÓN DE HOST NECESARIA
+  # ------------------------------------
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile.dev
+    container_name: angular_app
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    ports:
+      - "4200:4200"
+    environment:
+      CHOKIDAR_USEPOLLING: "true"
+      
+    # 💥 SEGUNDA CORRECCIÓN CLAVE:
+    # El comando DEBE incluir --host 0.0.0.0 para ser accesible desde tu máquina.
+    command: npm run start
+    
+# Volúmenes para persistencia de datos
+volumes:
+  dbdata:
