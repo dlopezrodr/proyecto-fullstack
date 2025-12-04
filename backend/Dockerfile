@@ -32,4 +32,4 @@ RUN php -d memory_limit=-1 /usr/local/bin/composer install --no-dev --optimize-a
 EXPOSE 9000
 
 # Comando para iniciar PHP-FPM
-CMD ["ng", "serve", "--host", "0.0.0.0"]
+CMD ["php-fpm"]
