@@ -42,9 +42,9 @@ services:
     container_name: symfony_db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: symfony_db
-      POSTGRES_USER: symfony_user
-      POSTGRES_PASSWORD: symfony_pass
+      POSTGRES_DB: booksmart
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: 1234
     volumes:
       - dbdata:/var/lib/postgresql/data
 
