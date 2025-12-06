@@ -2,33 +2,39 @@
 
 namespace App\Entity;
 
-use App\Repository\LibroRepository;
+use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
-#[ORM\Entity(repositoryClass: LibroRepository::class)]
+#[ORM\Entity]
+#[ORM\Table(name: 'libro')]
 class Libro
 {
     #[ORM\Id]
-    #[ORM\GeneratedValue]
-    #[ORM\Column]
-    #[ORM\ManyToOne(inversedBy: 'libros')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ?Editorial $editorial = null;
-    private ?Autor $autor = null;
-    private ?int $id = null;
+    #[ORM\GeneratedValue(strategy: "IDENTITY")]
+    #[ORM\Column(name: 'libro_id', type: 'integer')]
+    private ?int $libro_id = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, nullable: false)]
     private ?string $titulo = null;
 
-    #[ORM\Column(length: 13)]
+    #[ORM\Column(length: 13, unique: true, nullable: false)]
     private ?string $isbn = null;
 
-    #[ORM\Column(nullable: true)]
-    private ?\DateTimeImmutable $fechaPublicacion = null;
+    #[ORM\Column(type: Types::DATE_MUTABLE, nullable: true)]
+    private ?\DateTimeInterface $fecha_publicacion = null;
 
-    public function getId(): ?int
+    #[ORM\ManyToOne(inversedBy: 'libros')]
+    #[ORM\JoinColumn(name: 'editorial_id', referencedColumnName: 'editorial_id', nullable: false)]
+    private ?Editorial $editorial = null;
+
+    #[ORM\ManyToOne(inversedBy: 'libros')]
+    #[ORM\JoinColumn(name: 'autor_id', referencedColumnName: 'autor_id', nullable: false)]
+    private ?Autor $autor = null;
+    
+    // Getters y Setters...
+    public function getLibroId(): ?int
     {
-        return $this->id;
+        return $this->libro_id;
     }
 
     public function getTitulo(): ?string
@@ -39,7 +45,6 @@ class Libro
     public function setTitulo(string $titulo): static
     {
         $this->titulo = $titulo;
-
         return $this;
     }
 
@@ -51,19 +56,17 @@ class Libro
     public function setIsbn(string $isbn): static
     {
         $this->isbn = $isbn;
-
         return $this;
     }
 
-    public function getFechaPublicacion(): ?\DateTimeImmutable
+    public function getFechaPublicacion(): ?\DateTimeInterface
     {
-        return $this->fechaPublicacion;
+        return $this->fecha_publicacion;
     }
 
-    public function setFechaPublicacion(?\DateTimeImmutable $fechaPublicacion): static
+    public function setFechaPublicacion(?\DateTimeInterface $fecha_publicacion): static
     {
-        $this->fechaPublicacion = $fechaPublicacion;
-
+        $this->fecha_publicacion = $fecha_publicacion;
         return $this;
     }
 
@@ -75,7 +78,6 @@ class Libro
     public function setEditorial(?Editorial $editorial): static
     {
         $this->editorial = $editorial;
-
         return $this;
     }
 
@@ -87,7 +89,6 @@ class Libro
     public function setAutor(?Autor $autor): static
     {
         $this->autor = $autor;
-
         return $this;
     }
 }
