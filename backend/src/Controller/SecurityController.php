@@ -14,16 +14,7 @@ class SecurityController extends AbstractController
      * las peticiones POST a esta URL ANTES de que lleguen a este método.
      * El cuerpo del método NUNCA DEBE SER EJECUTADO en un login exitoso.
      */
-    #[Route('/api/login_check', name: 'app_login_check', methods: ['POST'])]
-    public function loginCheck(): JsonResponse
-    {
-        // Si el código llegara a este punto, significa que la autenticación
-        // falló o que la configuración del firewall es incorrecta.
-        
-        // El LexikJWTAuthenticationBundle ya gestiona las respuestas de éxito y fallo.
-        // Si no está configurado correctamente, esta excepción nos alertará.
-        throw new \Exception('El método loginCheck nunca debería ser ejecutado. Revisa la configuración del firewall.');
-    }
+    
 
     /**
      * El Logout en JWT es manejado por el frontend (eliminando el token).

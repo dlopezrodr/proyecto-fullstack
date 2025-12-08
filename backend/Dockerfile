@@ -27,6 +27,7 @@ COPY . /var/www/symfony
 
 # Instalar dependencias de Symfony
 RUN php -d memory_limit=-1 /usr/local/bin/composer install --no-dev --optimize-autoloader --no-interaction --no-scripts
+RUN apk update && apk add netcat-openbsd
 
 # Exponer el puerto de FPM (por defecto 9000)
 EXPOSE 9000

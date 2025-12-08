@@ -1,14 +1,18 @@
 # config/packages/nelmio_cors.yaml
-
 nelmio_cors:
     defaults:
+        origin_regex: true
         allow_credentials: true
-        allow_origin: ['%env(CORS_ALLOW_ORIGIN)%'] # Usaremos una variable de entorno
-        allow_headers: ['*']
-        allow_methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
+        allow_origin: ['%env(CORS_ALLOW_ORIGIN)%'] # Usamos una variable de entorno para flexibilidad
+        allow_methods: ['GET', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE']
+        allow_headers: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
         expose_headers: ['Link']
         max_age: 3600
     paths:
-        # Aplica estas reglas a todas las rutas de la API
+        # Esto aplica la configuración CORS a todas las rutas que empiecen por /api/
         '^/api/':
-            # Permite el tráfico. Los encabezados específicos se definen arriba
+            # Asegúrate de que esta configuración se usa para todas las rutas API
+            allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
+            allow_headers: ['*']
+            allow_methods: ['POST', 'PUT', 'GET', 'DELETE', 'OPTIONS']
+            max_age: 3600

@@ -2,21 +2,27 @@ version: '3.8'
 
 services:
   # ------------------------------------
-  # 1. SERVICIO DEL BACKEND (SYMFONY) - CORREGIDO
+  # 1. SERVICIO DEL BACKEND (SYMFONY) - MODIFICADO
   # ------------------------------------
   php:
     build:
       context: ./backend
+      # Asegúrate de que el Dockerfile.php instale 'netcat-openbsd'
     container_name: symfony_app
     restart: unless-stopped
     volumes:
+      # Montaje estándar del código:
       - ./backend:/var/www/symfony
+      # 🚨 NUEVO: Montaje del script de inicio
+      - ./docker/symfony/startup.sh:/usr/local/bin/startup.sh
     depends_on:
       - database
     
-    # 💥 LA CORRECCIÓN CLAVE:
-    # 1. Forzamos el comando a ser SOLO php-fpm.
-    # 2. Añadimos el --allow-run-as-root para Alpine, lo cual puede ser necesario si FPM falla.
+    # 💥 LA CORRECCIÓN CLAVE: Usamos el script como ENTRYPOINT
+    entrypoint: ["sh", "/usr/local/bin/startup.sh"]
+    
+    # El comando original (php-fpm) se pasa al script startup.sh
+    # El script lo ejecutará al final usando 'exec "$@"'
     command: ["php-fpm", "--allow-to-run-as-root"] 
 
   # ------------------------------------
@@ -47,12 +53,15 @@ services:
       POSTGRES_PASSWORD: 1234
     volumes:
       - dbdata:/var/lib/postgresql/data
+      # 🚨 CORRECCIÓN CRÍTICA: Debemos eliminar o vaciar init-user.sql, 
+      # ya que las migraciones lo harán. Dejamos el volumen para evitar errores
+      # si el archivo es requerido, pero debe estar vacío.
       - ./docker/db/init-user.sql:/docker-entrypoint-initdb.d/init-user.sql
     ports:
       - "5432:5432"
 
   # ------------------------------------
-  # 4. SERVICIO DEL FRONTEND (ANGULAR) - CORRECCIÓN DE HOST NECESARIA
+  # 4. SERVICIO DEL FRONTEND (ANGULAR)
   # ------------------------------------
   frontend:
     build:
@@ -67,9 +76,8 @@ services:
     environment:
       CHOKIDAR_USEPOLLING: "true"
       
-    # 💥 SEGUNDA CORRECCIÓN CLAVE:
-    # El comando DEBE incluir --host 0.0.0.0 para ser accesible desde tu máquina.
-    command: npm run start
+    # 💥 CORRECCIÓN: Agregar --host 0.0.0.0
+    command: ["npm", "run", "start", "--", "--host", "0.0.0.0"]
     
 # Volúmenes para persistencia de datos
 volumes:

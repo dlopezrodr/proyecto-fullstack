@@ -1,47 +1,63 @@
+# config/packages/security.yaml
 security:
-    # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
+    # 1. HASHERS (Mismo que tenías)
     password_hashers:
         Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
 
-    # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
+    # 2. PROVIDERS (Define dónde buscar usuarios)
     providers:
-        users_in_memory: { memory: null }
+        # Proveedor basado en tu entidad Usuario
+        app_user_provider:
+            entity:
+                class: App\Entity\Usuario
+                property: username # Campo utilizado para el login (username o email)
 
+    # 3. FIREWALLS (Define cómo se maneja la seguridad en diferentes rutas)
     firewalls:
         dev:
-            # Ensure dev tools and static assets are always allowed
+            # Deshabilita la seguridad para herramientas de desarrollo
             pattern: ^/(_profiler|_wdt|assets|build)/
             security: false
+
+        api:
+            # 💥 NUEVO FIREWALL PARA LA API
+            # Captura todas las rutas que empiecen por /api
+            pattern: ^/api
+            stateless: true # Es una API, no usa sesiones (requerido para JWT)
+            provider: app_user_provider
+            
+            # A. INTERCEPTOR DE LOGIN (Captura POST a /api/login_check)
+            json_login:
+                check_path: /api/login_check # URL que el frontend usa para enviar credenciales
+                username_path: username       # Clave JSON para el usuario
+                password_path: password       # Clave JSON para la contraseña
+                
+                # Handlers proporcionados por LexikJWTAuthenticationBundle
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+
+            # B. AUTENTICACIÓN JWT (Maneja las peticiones subsiguientes)
+            jwt: ~ # Activa el listener para validar el token JWT en las cabeceras
+
+        # Puedes dejar 'main' si tienes rutas tradicionales, pero la API lo ignora
         main:
             lazy: true
-            provider: users_in_memory
-            form_login:
-                login_path: app_login
-                check_path: app_login
-                enable_csrf: true
-            logout:
-                path: app_logout
-                # where to redirect after logout
-                # target: app_any_route
+            provider: app_user_provider
+            # ... (opcional: form_login, si tienes otras rutas web)
 
-            # Activate different ways to authenticate:
-            # https://symfony.com/doc/current/security.html#the-firewall
-
-            # https://symfony.com/doc/current/security/impersonating_user.html
-            # switch_user: true
-
-    # Note: Only the *first* matching rule is applied
+    # 4. ACCESS CONTROL (Define qué roles pueden acceder a qué rutas)
     access_control:
-        # - { path: ^/admin, roles: ROLE_ADMIN }
-        # - { path: ^/profile, roles: ROLE_USER }
+        # Permite el acceso anónimo a la ruta de login para poder autenticarse
+        - { path: ^/api/login_check, roles: PUBLIC_ACCESS } 
+        
+        # Protege el resto de las rutas de la API, requiriendo autenticación completa
+        - { path: ^/api, roles: IS_AUTHENTICATED_FULLY } 
 
 when@test:
     security:
         password_hashers:
-            # Password hashers are resource-intensive by design to ensure security.
-            # In tests, it's safe to reduce their cost to improve performance.
             Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface:
                 algorithm: auto
-                cost: 4 # Lowest possible value for bcrypt
-                time_cost: 3 # Lowest possible value for argon
-                memory_cost: 10 # Lowest possible value for argon
+                cost: 4
+                time_cost: 3
+                memory_cost: 10
