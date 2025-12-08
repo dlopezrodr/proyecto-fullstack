@@ -3,30 +3,36 @@
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Http\Authentication\AuthenticationUtils;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Routing\Annotation\Route;
 
 class SecurityController extends AbstractController
 {
-    #[Route(path: '/login', name: 'app_login')]
-    public function login(AuthenticationUtils $authenticationUtils): Response
+    /**
+     * Esta ruta es el punto de anclaje para el login basado en JWT.
+     * El firewall de seguridad configurado en security.yaml intercepta
+     * las peticiones POST a esta URL ANTES de que lleguen a este método.
+     * El cuerpo del método NUNCA DEBE SER EJECUTADO en un login exitoso.
+     */
+    #[Route('/api/login_check', name: 'app_login_check', methods: ['POST'])]
+    public function loginCheck(): JsonResponse
     {
-        // get the login error if there is one
-        $error = $authenticationUtils->getLastAuthenticationError();
-
-        // last username entered by the user
-        $lastUsername = $authenticationUtils->getLastUsername();
-
-        return $this->render('security/login.html.twig', [
-            'last_username' => $lastUsername,
-            'error' => $error,
-        ]);
+        // Si el código llegara a este punto, significa que la autenticación
+        // falló o que la configuración del firewall es incorrecta.
+        
+        // El LexikJWTAuthenticationBundle ya gestiona las respuestas de éxito y fallo.
+        // Si no está configurado correctamente, esta excepción nos alertará.
+        throw new \Exception('El método loginCheck nunca debería ser ejecutado. Revisa la configuración del firewall.');
     }
 
-    #[Route(path: '/logout', name: 'app_logout')]
+    /**
+     * El Logout en JWT es manejado por el frontend (eliminando el token).
+     * Esta ruta es opcional para la API, ya que no hace nada en el backend.
+     */
+    #[Route(path: '/api/logout', name: 'app_logout', methods: ['POST'])]
     public function logout(): void
     {
-        throw new \LogicException('This method can be blank - it will be intercepted by the logout key on your firewall.');
+        // En una API, el logout es un proceso puramente del lado del cliente.
+        // Mantenemos la ruta para el futuro, aunque no haga nada en el backend.
     }
 }
