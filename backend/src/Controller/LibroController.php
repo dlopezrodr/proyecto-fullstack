@@ -3,82 +3,115 @@
 namespace App\Controller;
 
 use App\Entity\Libro;
-use App\Form\LibroType;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpFoundation\JsonResponse; // Necesario para devolver JSON
 
-#[Route('/libro')]
+// 💥 RUTA BASE: Coincide con el endpoint de Angular /api/libros
+#[Route('/api/libros')] 
 final class LibroController extends AbstractController
 {
-    #[Route(name: 'app_libro_index', methods: ['GET'])]
+    // ===============================================
+    // R - READ (GET /api/libros) - Obtener todos
+    // ===============================================
+    #[Route(name: 'api_libros_index', methods: ['GET'])]
     public function index(EntityManagerInterface $entityManager): Response
     {
         $libros = $entityManager
             ->getRepository(Libro::class)
             ->findAll();
 
-        return $this->render('libro/index.html.twig', [
-            'libros' => $libros,
-        ]);
+        // Serializa el array de objetos Libro a JSON
+        // Nota: Los nombres de las propiedades se usarán como claves JSON (ej. "title").
+        return $this->json($libros, Response::HTTP_OK);
     }
 
-    #[Route('/new', name: 'app_libro_new', methods: ['GET', 'POST'])]
+    // ===============================================
+    // C - CREATE (POST /api/libros) - Crear nuevo
+    // ===============================================
+    #[Route(name: 'api_libros_new', methods: ['POST'])]
     public function new(Request $request, EntityManagerInterface $entityManager): Response
     {
-        $libro = new Libro();
-        $form = $this->createForm(LibroType::class, $libro);
-        $form->handleRequest($request);
+        // 1. Obtener y decodificar el cuerpo JSON
+        $data = json_decode($request->getContent(), true);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->persist($libro);
-            $entityManager->flush();
-
-            return $this->redirectToRoute('app_libro_index', [], Response::HTTP_SEE_OTHER);
+        if ($data === null) {
+            return $this->json(['message' => 'Invalid JSON body.'], Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->render('libro/new.html.twig', [
-            'libro' => $libro,
-            'form' => $form,
-        ]);
+        // 2. Crear y llenar la entidad
+        $libro = new Libro();
+        
+        // 💥 IMPORTANTE: Ajusta los nombres de las claves ('title', 'author', etc.) 
+        // a cómo los envía tu formulario de Angular.
+        // Y ajusta los métodos set* a los que existan en tu entidad Libro.
+        $libro->setTitulo($data['title'] ?? null); 
+        $libro->setAutor($data['author'] ?? null); 
+        $libro->setIsbn($data['isbn'] ?? null); 
+        // Añade cualquier otro campo necesario aquí...
+
+        // 3. Persistir
+        $entityManager->persist($libro);
+        $entityManager->flush();
+
+        // 4. Devolver el objeto creado con código 201 Created
+        return $this->json($libro, Response::HTTP_CREATED);
     }
 
-    #[Route('/{libro_id}', name: 'app_libro_show', methods: ['GET'])]
+    // ===============================================
+    // R - READ (GET /api/libros/{id}) - Obtener uno
+    // ===============================================
+    #[Route('/{id}', name: 'api_libro_show', methods: ['GET'])]
     public function show(Libro $libro): Response
     {
-        return $this->render('libro/show.html.twig', [
-            'libro' => $libro,
-        ]);
+        // Symfony convierte automáticamente el {id} de la URL en el objeto Libro (Param Converter)
+        return $this->json($libro, Response::HTTP_OK);
     }
 
-    #[Route('/{libro_id}/edit', name: 'app_libro_edit', methods: ['GET', 'POST'])]
+    // ===============================================
+    // U - UPDATE (PUT /api/libros/{id}) - Actualizar
+    // ===============================================
+    #[Route('/{id}', name: 'api_libro_edit', methods: ['PUT', 'PATCH'])]
     public function edit(Request $request, Libro $libro, EntityManagerInterface $entityManager): Response
     {
-        $form = $this->createForm(LibroType::class, $libro);
-        $form->handleRequest($request);
+        $data = json_decode($request->getContent(), true);
 
-        if ($form->isSubmitted() && $form->isValid()) {
-            $entityManager->flush();
-
-            return $this->redirectToRoute('app_libro_index', [], Response::HTTP_SEE_OTHER);
+        if ($data === null) {
+            return $this->json(['message' => 'Invalid JSON body.'], Response::HTTP_BAD_REQUEST);
         }
 
-        return $this->render('libro/edit.html.twig', [
-            'libro' => $libro,
-            'form' => $form,
-        ]);
+        // 💥 Llenar la entidad solo si el dato existe en la petición (permite actualizaciones parciales)
+        if (isset($data['title'])) {
+            $libro->setTitulo($data['title']);
+        }
+        if (isset($data['author'])) {
+            $libro->setAutor($data['author']);
+        }
+        if (isset($data['isbn'])) {
+            $libro->setIsbn($data['isbn']);
+        }
+        // ... (otros campos)
+
+        $entityManager->flush();
+
+        // Devolver el objeto actualizado
+        return $this->json($libro, Response::HTTP_OK);
     }
 
-    #[Route('/{libro_id}', name: 'app_libro_delete', methods: ['POST'])]
-    public function delete(Request $request, Libro $libro, EntityManagerInterface $entityManager): Response
+    // ===============================================
+    // D - DELETE (DELETE /api/libros/{id}) - Eliminar
+    // ===============================================
+    #[Route('/{id}', name: 'api_libro_delete', methods: ['DELETE'])]
+    public function delete(Libro $libro, EntityManagerInterface $entityManager): Response
     {
-        if ($this->isCsrfTokenValid('delete'.$libro->getLibro_id(), $request->getPayload()->getString('_token'))) {
-            $entityManager->remove($libro);
-            $entityManager->flush();
-        }
+        // 💥 Usamos el verbo DELETE, no se necesita el token CSRF.
+        $entityManager->remove($libro);
+        $entityManager->flush();
 
-        return $this->redirectToRoute('app_libro_index', [], Response::HTTP_SEE_OTHER);
+        // Devolver una respuesta sin contenido (204 No Content) para indicar éxito
+        return new Response(null, Response::HTTP_NO_CONTENT);
     }
 }

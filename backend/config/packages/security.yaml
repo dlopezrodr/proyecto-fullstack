@@ -10,7 +10,7 @@ security:
         app_user_provider:
             entity:
                 class: App\Entity\Usuario
-                property: username # Campo utilizado para el login (username o email)
+                property: email # Campo utilizado para el login (username o email)
 
     # 3. FIREWALLS (Define cómo se maneja la seguridad en diferentes rutas)
     firewalls:
