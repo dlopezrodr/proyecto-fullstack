@@ -3,16 +3,19 @@ nelmio_cors:
     defaults:
         origin_regex: true
         allow_credentials: true
-        allow_origin: ['%env(CORS_ALLOW_ORIGIN)%'] # Usamos una variable de entorno para flexibilidad
+        # Define una lista de orígenes global (la variable de entorno)
+        allow_origin: ['%env(CORS_ALLOW_ORIGIN)%'] 
         allow_methods: ['GET', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE']
         allow_headers: ['Content-Type', 'Authorization', 'Accept', 'Origin', 'X-Requested-With']
         expose_headers: ['Link']
         max_age: 3600
     paths:
-        # Esto aplica la configuración CORS a todas las rutas que empiecen por /api/
         '^/api/':
-            # Asegúrate de que esta configuración se usa para todas las rutas API
-            allow_origin: ['%env(CORS_ALLOW_ORIGIN)%']
             allow_headers: ['*']
             allow_methods: ['POST', 'PUT', 'GET', 'DELETE', 'OPTIONS']
             max_age: 3600
+            allow_credentials: true
+
+            # 💥 CONSOLIDADO: Sobrescribe el valor de defaults
+            # Nota: 'allow_origins' es la forma preferida y maneja listas
+            allow_origin: ['http://localhost:4200']
