@@ -49,7 +49,7 @@ security:
     access_control:
         # Permite el acceso anónimo a la ruta de login para poder autenticarse
         - { path: ^/api/login_check, roles: PUBLIC_ACCESS } 
-        
+        - { path: ^/api, roles: PUBLIC_ACCESS, methods: [OPTIONS] }
         # Protege el resto de las rutas de la API, requiriendo autenticación completa
         - { path: ^/api, roles: IS_AUTHENTICATED_FULLY } 
 

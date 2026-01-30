@@ -23,7 +23,7 @@ services:
     
     # El comando original (php-fpm) se pasa al script startup.sh
     # El script lo ejecutará al final usando 'exec "$@"'
-    command: ["php-fpm", "--allow-to-run-as-root"] 
+    command: ["php-fpm", "--allow-to-run-as-root", "-d", "listen=0.0.0.0:9000"] 
 
   # ------------------------------------
   # 2. SERVIDOR WEB (NGINX)
