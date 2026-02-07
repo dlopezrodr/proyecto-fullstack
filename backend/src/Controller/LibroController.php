@@ -4,12 +4,12 @@ namespace App\Controller;
 
 use App\Entity\Libro;
 use App\Entity\Autor;
+use App\Entity\Editorial;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\HttpFoundation\JsonResponse;
 
 #[Route('/api/libros')] 
 final class LibroController extends AbstractController
@@ -19,13 +19,28 @@ final class LibroController extends AbstractController
     // ===============================================
     #[Route('', name: 'api_libros_index', methods: ['GET'])]
     public function index(EntityManagerInterface $entityManager): Response
-    {
-        $libros = $entityManager
-            ->getRepository(Libro::class)
-            ->findAll();
+{
+    $libros = $entityManager->getRepository(Libro::class)->findAll();
 
-        return $this->json($libros, Response::HTTP_OK);
+    // Forzamos un array simple si el serializador automático falla
+    $data = [];
+    foreach ($libros as $libro) {
+        $data[] = [
+            'id' => $libro->getId(),
+            'titulo' => $libro->getTitulo(),
+            'isbn' => $libro->getIsbn(),
+            'autor' => [
+                'nombre' => $libro->getAutor()?->getNombre() ?? 'Sin autor'
+            ],
+            'editorial' => [
+                'nombre' => $libro->getEditorial()?->getNombre() ?? 'N/A'
+            ],
+            'fechaPublicacion' => $libro->getFechaPublicacion()?->format('Y-m-d')
+        ];
     }
+
+    return $this->json($data, Response::HTTP_OK);
+}
 
     // ===============================================
     // C - CREATE (POST /api/libros)
@@ -39,22 +54,36 @@ final class LibroController extends AbstractController
             return $this->json(['message' => 'Invalid JSON body.'], Response::HTTP_BAD_REQUEST);
         }
 
+        // Validación de ISBN único para evitar errores 500
+        if (!empty($data['isbn'])) {
+            $existingBook = $entityManager->getRepository(Libro::class)->findOneBy(['isbn' => $data['isbn']]);
+            if ($existingBook) {
+                return $this->json(['message' => 'El ISBN ya existe.'], Response::HTTP_CONFLICT);
+            }
+        }
+
         $libro = new Libro();
         $libro->setTitulo($data['title'] ?? null); 
         $libro->setIsbn($data['isbn'] ?? null); 
 
-        // Lógica para manejar la relación con Autor
+        // Relación con Autor
         if (!empty($data['author'])) {
             $autor = $this->getOrCreateAutor($data['author'], $entityManager);
             $libro->setAutor($autor);
         }
 
-        // Manejo de fecha desde Angular (publicationDate)
+        // Relación con Editorial
+        if (!empty($data['editorial'])) {
+            $editorial = $this->getOrCreateEditorial($data['editorial'], $entityManager);
+            $libro->setEditorial($editorial);
+        }
+
+        // Manejo de fecha
         if (!empty($data['publicationDate'])) {
             try {
                 $libro->setFechaPublicacion(new \DateTime($data['publicationDate']));
             } catch (\Exception $e) {
-                // Si la fecha tiene formato inválido, ignoramos o manejamos el error
+                // Formato de fecha inválido
             }
         }
 
@@ -85,22 +114,23 @@ final class LibroController extends AbstractController
             return $this->json(['message' => 'Invalid JSON body.'], Response::HTTP_BAD_REQUEST);
         }
 
-        if (isset($data['title'])) {
-            $libro->setTitulo($data['title']);
-        }
+        if (isset($data['title'])) $libro->setTitulo($data['title']);
+        if (isset($data['isbn'])) $libro->setIsbn($data['isbn']);
 
-        if (isset($data['isbn'])) {
-            $libro->setIsbn($data['isbn']);
-        }
-
-        // Actualización del autor si se envía en el JSON
         if (isset($data['author'])) {
             $autor = $this->getOrCreateAutor($data['author'], $entityManager);
             $libro->setAutor($autor);
         }
 
+        if (isset($data['editorial'])) {
+            $editorial = $this->getOrCreateEditorial($data['editorial'], $entityManager);
+            $libro->setEditorial($editorial);
+        }
+
         if (isset($data['publicationDate'])) {
-            $libro->setFechaPublicacion(new \DateTime($data['publicationDate']));
+            try {
+                $libro->setFechaPublicacion(new \DateTime($data['publicationDate']));
+            } catch (\Exception $e) { }
         }
 
         $entityManager->flush();
@@ -120,21 +150,30 @@ final class LibroController extends AbstractController
         return new Response(null, Response::HTTP_NO_CONTENT);
     }
 
-    /**
-     * Helper privado para buscar o crear un autor por nombre
-     */
+    // ===============================================
+    // HELPERS PRIVADOS
+    // ===============================================
+
     private function getOrCreateAutor(string $nombre, EntityManagerInterface $em): Autor
     {
         $autor = $em->getRepository(Autor::class)->findOneBy(['nombre' => $nombre]);
-
         if (!$autor) {
             $autor = new Autor();
             $autor->setNombre($nombre);
-            $autor->setApellido('.');
+            $autor->setApellido('.'); // Valor por defecto si es obligatorio
             $em->persist($autor);
-            // No hacemos flush aquí, dejamos que el flush del controlador lo guarde todo
         }
-
         return $autor;
+    }
+
+    private function getOrCreateEditorial(string $nombre, EntityManagerInterface $em): Editorial
+    {
+        $editorial = $em->getRepository(Editorial::class)->findOneBy(['nombre' => $nombre]);
+        if (!$editorial) {
+            $editorial = new Editorial();
+            $editorial->setNombre($nombre);
+            $em->persist($editorial);
+        }
+        return $editorial;
     }
 }
